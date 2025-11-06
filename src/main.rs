@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+mod file;
 
 #[derive(Parser)]
 #[command(name = "myapp")]
@@ -9,7 +10,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Print { todo_list_name: Option<String> },
+    Print  { todo_list_name: Option<String> },
+    Create { name: String },
+    List,
+    Remove { name: String },
     Run,
 }
 
@@ -18,7 +22,7 @@ fn main() {
 
     // If a user wrote something that’s not a known subcommand:
     if let Some(cmd) = raw_args.get(1) {
-        if !["print", "run"].contains(&cmd.as_str()) {
+        if !["print", "create", "list"].contains(&cmd.as_str()) {
             return handle_unknown_command(cmd, &raw_args[2..]);
         }
     }
@@ -30,11 +34,19 @@ fn main() {
         Commands::Print { todo_list_name } => {
             let todo_list_name = todo_list_name.unwrap_or_else(|| "default".to_string());
             if todo_list_name == "default" {
-                print_todo_list(&get_default_todolist());
+                print_todolist(&get_default_todolist());
                 return;
             }
-            print_todo_list(&todo_list_name);
+            print_todolist(&todo_list_name);
 
+        },
+        Commands::Create { name } => {
+            create_todolist(&name)
+        }
+        Commands::List => {
+            todolist_list()
+        },
+        Commands::Remove { name } => {
         }
     }
 }
@@ -42,7 +54,7 @@ fn main() {
 fn handle_unknown_command(cmd: &str, args: &[String]) {
     // check if NAME is a todolist name
     // check if NAME can be a todolist
-    print_todo_list(cmd);
+    print_todolist(cmd);
 
 
     println!("Unknown command: {}", cmd);
@@ -55,18 +67,24 @@ fn get_default_todolist() -> String{
     todolist
 }
 
-fn print_todo_list(name: &str){
+fn print_todolist(name: &str){
     println!("TODO LIST {}", name);
 }
 
+fn create_todolist(name: &str) {
+    println!("Creating {}'s todolist", name);
+    file::create_todolist_file(&name)
+}
 
+fn todolist_list() {
+    let todolist_vec= file::file_list();
+    let mut counter:u16 = 0;
+    for todolist in todolist_vec{
+        counter += 1;
+        println!("{}. {}",counter, todolist);
+    }
+}
 
+fn remove_todolist(name: &str) {
 
-
-
-
-
-
-
-
-
+}
