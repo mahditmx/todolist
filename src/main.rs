@@ -1,5 +1,7 @@
+extern crate core;
 use clap::{Parser, Subcommand};
 mod file;
+use std::io::{stdin,stdout,Write};
 
 #[derive(Parser)]
 #[command(name = "myapp")]
@@ -10,10 +12,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Print  { todo_list_name: Option<String> },
-    Create { name: String },
+    Print   {todo_list_name: Option<String>},
+    Add     {name: String, task: String}, // add task to a selected todolist.
+    Create  {name: String},
+    Remove  {name: String},
+    Read    {name: String},
     List,
-    Remove { name: String },
     Run,
 }
 
@@ -22,7 +26,7 @@ fn main() {
 
     // If a user wrote something that’s not a known subcommand:
     if let Some(cmd) = raw_args.get(1) {
-        if !["print", "create", "list"].contains(&cmd.as_str()) {
+        if !["print", "create", "list", "remove", "add", "read"].contains(&cmd.as_str()) {
             return handle_unknown_command(cmd, &raw_args[2..]);
         }
     }
@@ -41,12 +45,19 @@ fn main() {
 
         },
         Commands::Create { name } => {
-            create_todolist(&name)
+            create_todolist(&name);
         }
         Commands::List => {
-            todolist_list()
+            todolist_list();
         },
         Commands::Remove { name } => {
+            remove_todolist(&name);
+        }
+        Commands::Add {name, task} => {
+            add_task_to_todolist(&name,&task);
+        }
+        Commands::Read { name } => {
+            read_todolist(&name);
         }
     }
 }
@@ -63,7 +74,7 @@ fn handle_unknown_command(cmd: &str, args: &[String]) {
 
 
 fn get_default_todolist() -> String{
-    let todolist = "Xdefault".to_string();
+    let todolist = "default".to_string();
     todolist
 }
 
@@ -72,12 +83,16 @@ fn print_todolist(name: &str){
 }
 
 fn create_todolist(name: &str) {
-    println!("Creating {}'s todolist", name);
-    file::create_todolist_file(&name)
+    let r = file::create_todolist_file(&name);
+    if r == false {
+        print!("FAIL: cant create todolist file\n");
+        return;
+    }
+    println!("Todolist {} created.", name);
 }
 
 fn todolist_list() {
-    let todolist_vec= file::file_list();
+    let todolist_vec= file::todolist_list();
     let mut counter:u16 = 0;
     for todolist in todolist_vec{
         counter += 1;
@@ -85,6 +100,98 @@ fn todolist_list() {
     }
 }
 
+
+fn todolist_exist(name: &str) -> bool {
+    let todolist_vec= file::todolist_list();
+    if !todolist_vec.contains(&name.to_string()){
+        return false;
+    }
+    true
+}
+
 fn remove_todolist(name: &str) {
+    if !todolist_exist(&name){
+        println!("{} is not exist.", name);
+        return;
+    }
+
+
+
+    if !ask_y_or_n(&format!("Remove {} todolist? ",name)){
+        print!("Canceled by user.");
+        return;
+    }
+    let name = &format!("{}.json", name);
+    if file::remove_todolist_file(name){
+        println!("{} Removed", name);
+        return;
+    }
+    print!("FAIL: Can't remove {}", name);
 
 }
+
+fn input(message: &str) -> String {
+
+
+    let mut input=String::new();
+    print!("{}(Y/N)", message);
+    let _=stdout().flush();
+    stdin().read_line(&mut input).expect("Did not enter a correct string");
+    if let Some('\n')=input.chars().next_back() {
+        input.pop();
+    }
+    if let Some('\r')=input.chars().next_back() {
+        input.pop();
+    }
+    input
+}
+
+
+fn ask_y_or_n(message: &str) -> bool {
+    let output = input(message);
+    if ["Yes", "Y", "y","yes"].contains(&output.as_str()){
+        return true;
+    }
+    if ["No", "N", "n","no"].contains(&output.as_str()) {
+        return false;
+    }
+    false
+}
+
+fn add_task_to_todolist(name: &str, task: &str) {
+    if !todolist_exist(&name){
+        println!("{} todolist is not exist.", name);
+        return;
+    }
+    file::add_to_todolist(name,task);
+
+}
+
+
+fn read_todolist(name: &str) {
+    if !todolist_exist(&name){
+        println!("{} todolist is not exist.", name);
+        return;
+    }
+    let todolist_json = file::read_todolist(&name);
+
+
+    if let Some(obj) = todolist_json.as_object(){
+        let mut  counter = 0;
+        for (key,value) in obj{
+            counter += 1;
+            println!("{}. {}",counter,value.get("text").unwrap().as_str().unwrap());
+        }
+    }
+
+
+}
+
+
+
+
+
+
+
+
+
