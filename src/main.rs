@@ -179,12 +179,13 @@ fn read_todolist(name: &str) {
     if let Some(obj) = todolist_json.as_object(){
         let mut  counter = 0;
         for (key,value) in obj{
+            if key == "id"{
+                continue;
+            }
             counter += 1;
             println!("{}. {}",counter,value.get("text").unwrap().as_str().unwrap());
         }
     }
-
-
 }
 
 
